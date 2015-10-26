@@ -155,13 +155,19 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         Log.d(TAG, "onNewIntent");
         ctx = this;
         if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {
+            Parcelable[] messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
+            if (messages == null) {
+                mTextView.setText("New tag detected");
 
-            //   Toast.makeText(ctx, ctx.getString(R.string.hello_tag), Toast.LENGTH_LONG ).show();
-            mytag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-            // Read tag
-            new NdefReaderTask().execute(mytag);
-            //   readMessages(intent);
-            Toast.makeText(this, this.getString(R.string.ok_detection) + mytag.toString(), Toast.LENGTH_LONG).show();
+            } else {
+                //   Toast.makeText(ctx, ctx.getString(R.string.hello_tag), Toast.LENGTH_LONG ).show();
+                mytag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+                // Read tag
+                new NdefReaderTask().execute(mytag);
+                //readTag(mytag, intent);
+                //   readMessages(intent);
+                Toast.makeText(this, this.getString(R.string.ok_detection) + mytag.toString(), Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -186,9 +192,29 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
+    /*private void readTag(Tag tag, Intent intent) {
+        Parcelable[] messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
+        if (messages == null) {
+            mTextView.setText("New tag detected");
+
+        } else {
+            NdefRecord[] records = Ndef.get(tag).getCachedNdefMessage().getRecords();
+            for (NdefRecord ndefRecord : records) {
+                if (ndefRecord.getTnf() == NdefRecord.TNF_WELL_KNOWN && Arrays.equals(ndefRecord.getType(), NdefRecord.RTD_TEXT)) {
+                    try {
+                        mTextView.append("\n"  + readRecordText(ndefRecord));
+                        //addText(new String(readRecordText(ndefRecord)), mTextView);
+                    } catch (UnsupportedEncodingException e) {
+                        Log.e(TAG, "Unsupported Encoding", e);
+                    }
+                }
+            }
+        }
+    }*/
 
     // Background task for reading the data. Do not block the UI thread while reading.
     private class NdefReaderTask extends AsyncTask<Tag, Void, String> {
+        String data = "";
         @Override
         protected String doInBackground(Tag... params) {
             Tag tag = params[0];
@@ -197,19 +223,29 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 // NDEF is not supported by this Tag.
                 return null;
             }
-            NdefMessage ndefMessage = ndef.getCachedNdefMessage();
-            NdefRecord[] records = ndefMessage.getRecords();
+
+            NdefRecord[] records = Ndef.get(tag).getCachedNdefMessage().getRecords();
+            NdefRecord firstRecord= readRecordN(0);
             for (NdefRecord ndefRecord : records) {
                 if (ndefRecord.getTnf() == NdefRecord.TNF_WELL_KNOWN && Arrays.equals(ndefRecord.getType(), NdefRecord.RTD_TEXT)) {
                     try {
-                        return readText(ndefRecord);
+                        data = data + "\n" + readRecordText(ndefRecord);
+                        //mTextView.append("\n" + readRecordText(ndefRecord));
+                        //addText(new String(readRecordText(ndefRecord)), mTextView);
                     } catch (UnsupportedEncodingException e) {
                         Log.e(TAG, "Unsupported Encoding", e);
                     }
                 }
             }
+            try {
+                return readText(readRecordN(0));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+            //return firstRecord;
             return null;
         }
+
 
         private String readText(NdefRecord record) throws UnsupportedEncodingException {
 
@@ -227,10 +263,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             return new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1);
         }
 
-        @Override
+        //@Override
         protected void onPostExecute(String result) {
             if (result != null) {
-                mTextView.setText("Tag says: " + result);
+                mTextView.setText("Tag says: " + data);
             }
         }
     }

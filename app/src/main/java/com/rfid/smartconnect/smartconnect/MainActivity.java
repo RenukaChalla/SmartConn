@@ -77,6 +77,19 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
         tagDetected.addCategory(Intent.CATEGORY_DEFAULT);
         writeTagFilters = new IntentFilter[] { tagDetected };
+        findViewById(R.id.reset_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    onReset(mytag);
+                } catch (IOException e) {
+                    Log.e(TAG, "Tag not found" + e);
+                } catch (FormatException e) {
+                    Log.e(TAG, "Improper format" + e);
+                }
+            }
+        });
+
     }
 
     @Override
@@ -148,15 +161,33 @@ public class MainActivity extends AppCompatActivity {
         NdefRecord[] records = ndefMessage.getRecords();
         return records[n];
     }*/
-
+   private void onReset(Tag tag) throws IOException, FormatException {
+       String phoneName = getLocalBluetoothName();
+       NdefRecord[] records = { createRecord(bdDevice.getName()+","+bdDevice.getAddress()),createRecord("0"),createRecord(phoneName) };
+       NdefMessage  message = new NdefMessage(records);
+       // Get an instance of Ndef for the tag.
+       Ndef ndef = Ndef.get(tag);
+       // Enable I/O
+       ndef.connect();
+       // Write the message
+       ndef.writeNdefMessage(message);
+       writeMode = false;
+       // Close the connection
+       ndef.close();
+   }
     // Function for writing to tag
     private void write(Tag tag) throws IOException, FormatException {
+        String phoneName = getLocalBluetoothName();
+         /*TODO: 2 conditions for write: 1 when headset paired for 1st time:
+        if(!pairedDevices.contains(headset_name)) {
+        NdefRecord[] records = { createRecord(headset_name), createRecord("1"), createRecord(phoneName) } ;
+        }
+        2 when headset_name found in paired device:
+        else {
+        NdefRecord[] records = { createRecord(headset_name),record_freq(),createRecord(phoneName) };
+        } */
 
-        NdefRecord[] records = { createRecord(/* TODO:"headsetBluetoothName" */) };
-        /*TODO: 2 conditions for write: 1 when headset paired for 1st time: NdefRecord[] records = { createRecord(headset_name),
-         createRecord(1), createRecord(phoneName); }
-         2 when headset_name found in paired device: NdefRecord[] records = { createRecord(headset_name),record_freq(),
-         createRecord(phoneName) };*/
+        NdefRecord[] records = { createRecord(bdDevice.getName()+","+ bdDevice.getAddress()),record_freq(),createRecord(phoneName) };
         NdefMessage  message = new NdefMessage(records);
         // Get an instance of Ndef for the tag.
         Ndef ndef = Ndef.get(tag);
@@ -169,10 +200,11 @@ public class MainActivity extends AppCompatActivity {
         ndef.close();
     }
 
+
     // Function to create record for tag
-    private NdefRecord createRecord(/*TODO: String bluetoothName*/) throws UnsupportedEncodingException {
+    private NdefRecord createRecord(String input) throws UnsupportedEncodingException {
         String lang       = "en";
-        String text = bdDevice.getName()+","+bdDevice.getAddress();//"renu,F0:B4:79:08:BE:93"/* bluetoothName */;
+        String text = input;//bdDevice.getName()+","+bdDevice.getAddress();//"renu,F0:B4:79:08:BE:93"/* bluetoothName */;
         byte[] textBytes  = text.getBytes();
         byte[] langBytes  = lang.getBytes("US-ASCII");
         int    langLength = langBytes.length;
@@ -186,6 +218,60 @@ public class MainActivity extends AppCompatActivity {
         NdefRecord recordNFC = new NdefRecord(NdefRecord.TNF_WELL_KNOWN,  NdefRecord.RTD_TEXT,  new byte[0], payload);
         return recordNFC;
     }
+
+    private NdefRecord record_freq() throws UnsupportedEncodingException {
+        String lang = "en";
+        String freq = null;
+        int frequency = 0;
+        // record[0]=headset name, record[1]=frequency of use, record[2]=phone's bluetooth name
+        NdefRecord freq_block = readRecordN(1);
+
+        if (freq_block.getTnf() == NdefRecord.TNF_WELL_KNOWN && Arrays.equals(freq_block.getType(), NdefRecord.RTD_TEXT)) {
+            try {
+                frequency = toInteger(readRecordText(freq_block));
+                if(frequency != 31) {  //max value that can be written
+                    frequency += 1;
+                }
+                else {
+                    frequency = 0;
+                }
+                freq = String.valueOf(frequency);
+            } catch (UnsupportedEncodingException e) {
+                Log.e(TAG, "Unsupported Encoding", e);
+            }
+        }
+        String text = freq;
+        byte[] textBytes  = text.getBytes();
+        byte[] langBytes  = lang.getBytes("US-ASCII");
+        int    langLength = langBytes.length;
+        int    textLength = textBytes.length;
+
+        byte[] payload    = new byte[1 + langLength + textLength];
+
+        // set status byte (see NDEF spec for actual bits)
+        payload[0] = (byte) langLength;
+
+        // copy langbytes and textbytes into payload
+        System.arraycopy(langBytes, 0, payload, 1, langLength);
+        System.arraycopy(textBytes, 0, payload, 1 + langLength, textLength);
+
+        NdefRecord recordNFC = new NdefRecord(NdefRecord.TNF_WELL_KNOWN,  NdefRecord.RTD_TEXT,  new byte[0], payload);
+
+        return recordNFC;
+    }
+    // Read record no. n
+    private NdefRecord readRecordN(int n) {
+
+        Ndef ndef = Ndef.get(mytag);
+        if (ndef == null) {
+            // NDEF is not supported by this Tag.
+            return null;
+        }
+        NdefMessage ndefMessage = ndef.getCachedNdefMessage();
+        NdefRecord[] records = ndefMessage.getRecords();
+        return records[n];
+    }
+
 
     /*private NdefRecord record_freq() throws UnsupportedEncodingException {
         String lang = "en";
@@ -269,6 +355,25 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "vibrate");
         Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         vibe.vibrate(500);
+    }
+
+    private String getLocalBluetoothName(){
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        String name = mBluetoothAdapter.getName();
+        //  String address = mBluetoothAdapter.getAddress();
+        if(name == null){
+            Log.d(TAG, "Name is null!");
+            name = mBluetoothAdapter.getAddress();
+        }
+        return name;
+    }
+
+    public static int toInteger(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
 
