@@ -30,6 +30,7 @@ import org.ndeftools.externaltype.AndroidApplicationRecord;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
 public class HomeActivity extends AppCompatActivity implements View.OnClickListener {
@@ -253,14 +254,22 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             String textEncoding = ((payload[0] & 128) == 0) ? "UTF-8" : "UTF-16";
             int languageCodeLength = payload[0] & 0063;
             String stuff = new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1);
-            bdtkn = new StringTokenizer(stuff, ",");
-            device_name = bdtkn.nextToken();
-            device_address = bdtkn.nextToken();
-            Intent btintent = new Intent(HomeActivity.this, BTActivity.class);
-            btintent.putExtra("bt_device_name", device_name);
-            btintent.putExtra("bt_device_address", device_address);
-            startActivity(btintent);
-            return new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1);
+            try {
+                bdtkn = new StringTokenizer(stuff, ",");
+                device_name = bdtkn.nextToken();
+                device_address = bdtkn.nextToken();
+                Intent btintent = new Intent(HomeActivity.this, BTActivity.class);
+                btintent.putExtra("bt_device_name", device_name);
+                btintent.putExtra("bt_device_address", device_address);
+                startActivity(btintent);
+                return new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1);
+            }catch(NoSuchElementException e){
+                data = "Wrong tag format";
+                e.printStackTrace();
+
+//                Toast.makeText(ctx, "Wrong Tag Format", Toast.LENGTH_LONG);
+            }
+            return null;
         }
 
         //@Override

@@ -77,18 +77,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
         tagDetected.addCategory(Intent.CATEGORY_DEFAULT);
         writeTagFilters = new IntentFilter[] { tagDetected };
-        findViewById(R.id.reset_btn).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    onReset(mytag);
-                } catch (IOException e) {
-                    Log.e(TAG, "Tag not found" + e);
-                } catch (FormatException e) {
-                    Log.e(TAG, "Improper format" + e);
-                }
-            }
-        });
+
 
     }
 
@@ -161,43 +150,27 @@ public class MainActivity extends AppCompatActivity {
         NdefRecord[] records = ndefMessage.getRecords();
         return records[n];
     }*/
-   private void onReset(Tag tag) throws IOException, FormatException {
-       String phoneName = getLocalBluetoothName();
-       NdefRecord[] records = { createRecord(bdDevice.getName()+","+bdDevice.getAddress()),createRecord("0"),createRecord(phoneName) };
-       NdefMessage  message = new NdefMessage(records);
-       // Get an instance of Ndef for the tag.
-       Ndef ndef = Ndef.get(tag);
-       // Enable I/O
-       ndef.connect();
-       // Write the message
-       ndef.writeNdefMessage(message);
-       writeMode = false;
-       // Close the connection
-       ndef.close();
-   }
     // Function for writing to tag
     private void write(Tag tag) throws IOException, FormatException {
         String phoneName = getLocalBluetoothName();
-         /*TODO: 2 conditions for write: 1 when headset paired for 1st time:
-        if(!pairedDevices.contains(headset_name)) {
-        NdefRecord[] records = { createRecord(headset_name), createRecord("1"), createRecord(phoneName) } ;
+        NdefRecord[] records;
+        if(numberOfRecords(tag) < 3) {
+            records = new NdefRecord[]{ createRecord(bdDevice.getName() + "," + bdDevice.getAddress()), createRecord("1"), createRecord(phoneName) } ;
         }
-        2 when headset_name found in paired device:
         else {
-        NdefRecord[] records = { createRecord(headset_name),record_freq(),createRecord(phoneName) };
-        } */
+             records = new NdefRecord[]{ createRecord(bdDevice.getName() + "," + bdDevice.getAddress()), record_freq(), createRecord(phoneName)};
+        }
+            NdefMessage message = new NdefMessage(records);
+            // Get an instance of Ndef for the tag.
+            Ndef ndef = Ndef.get(tag);
+            // Enable I/O
+            ndef.connect();
+            // Write the message
+            ndef.writeNdefMessage(message);
+            writeMode = false;
+            // Close the connection
+            ndef.close();
 
-        NdefRecord[] records = { createRecord(bdDevice.getName()+","+ bdDevice.getAddress()),record_freq(),createRecord(phoneName) };
-        NdefMessage  message = new NdefMessage(records);
-        // Get an instance of Ndef for the tag.
-        Ndef ndef = Ndef.get(tag);
-        // Enable I/O
-        ndef.connect();
-        // Write the message
-        ndef.writeNdefMessage(message);
-        writeMode = false;
-        // Close the connection
-        ndef.close();
     }
 
 
@@ -270,6 +243,16 @@ public class MainActivity extends AppCompatActivity {
         NdefMessage ndefMessage = ndef.getCachedNdefMessage();
         NdefRecord[] records = ndefMessage.getRecords();
         return records[n];
+    }
+    private int numberOfRecords(Tag tag){
+        Ndef ndef = Ndef.get(tag);
+        if (ndef == null) {
+            // NDEF is not supported by this Tag.
+            return 0;
+        }
+        NdefMessage ndefMessage = ndef.getCachedNdefMessage();
+        NdefRecord[] records = ndefMessage.getRecords();
+        return records.length;
     }
 
 
