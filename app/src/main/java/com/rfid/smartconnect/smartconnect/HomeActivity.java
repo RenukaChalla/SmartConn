@@ -275,7 +275,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         //@Override
         protected void onPostExecute(String result) {
             if (result != null) {
-                mTextView.setText("Tag says: " + data);
+                mTextView.setText("Tag says(Local Bluetooth device name, MAC Address | frequency of tag| Device connected) -\n " + data);
             }
         }
     }

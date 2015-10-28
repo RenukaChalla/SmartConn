@@ -22,9 +22,10 @@
 
         <Button
             android:id="@+id/btnbind"
-            android:layout_width="200dp"
-            android:layout_height="150dp"
-            android:text="Bind" />
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:text="PAIR"
+            android:textSize="30dp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -35,9 +36,10 @@
 
         <Button
             android:id="@+id/btnpair"
-            android:layout_width="200dp"
-            android:layout_height="150dp"
-            android:text="Pair" />
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:text="CONNECT"
+            android:textSize="30dp"/>
     </LinearLayout>
     <TextView
         android:layout_width="match_parent"
